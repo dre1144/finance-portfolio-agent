@@ -1,0 +1,28 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "SUPABASE_URL",
+        "-e",
+        "SUPABASE_SERVICE_KEY",
+        "-e",
+        "ENCRYPTION_KEY",
+        "-e",
+        "MCP_API_KEY",
+        "-e",
+        "MCP_API_URL",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "mcp/finance-portfolio-agent"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_TOKEN>"
+      }
+    }
+  }
+} 

@@ -1,0 +1,198 @@
+name: finance-portfolio-agent
+version: 1.0.0
+description: MCP agent for portfolio analysis and management with Supabase integration
+
+# Точка входа
+entrypoint: src/agent/base.py:MCPAgent
+
+# Зависимости
+dependencies:
+  - aiohttp==3.9.3
+  - pydantic==2.6.3
+  - python-dotenv==1.0.1
+  - supabase==2.3.4
+  - asyncpg==0.29.0
+  - tinkoff-investments==0.2.0b62
+  - cryptography==42.0.5
+
+# Конфигурация среды
+environment:
+  - SUPABASE_URL
+  - SUPABASE_SERVICE_KEY
+  - ENCRYPTION_KEY
+  - MCP_API_KEY
+  - MCP_API_URL
+
+# Настройки сервисов
+services:
+  supabase:
+    realtime:
+      enabled: true
+      channels:
+        - notifications
+        - portfolio_updates
+    tables:
+      - name: user_tokens
+        description: Secure storage for broker tokens
+        realtime: false
+      - name: notifications
+        description: User notifications storage
+        realtime: true
+      - name: notification_settings
+        description: User notification preferences
+        realtime: false
+
+  brokers:
+    tinkoff:
+      adapter: src/services/tinkoff/client.py:TinkoffClient
+      config:
+        sandbox: false
+        api_retry_count: 3
+        validation_interval: 3600  # 1 час
+
+# Настройки мониторинга
+monitoring:
+  logging:
+    level: INFO
+    format: json
+  metrics:
+    enabled: true
+    path: /metrics
+    collectors:
+      - name: token_validation
+        type: counter
+        description: Number of token validations
+      - name: notification_sent
+        type: counter
+        description: Number of notifications sent
+      - name: portfolio_changes
+        type: gauge
+        description: Portfolio value changes
+
+# Фоновые задачи
+background_tasks:
+  - name: portfolio_monitor
+    schedule: "*/5 * * * *"  # Каждые 5 минут
+    handler: src/agent/tasks/portfolio_monitor.py:run
+    description: Monitor portfolio changes and send notifications
+    config:
+      change_threshold: 5.0  # Порог изменения в процентах
+      metrics:
+        - portfolio_value
+        - daily_pnl
+        - position_changes
+      notifications:
+        enabled: true
+        types:
+          - portfolio_change
+          - risk_alert
+          - rebalance_suggestion
+    
+  - name: market_monitor
+    schedule: "*/15 * * * *"  # Каждые 15 минут
+    handler: src/agent/tasks/market_monitor.py:run
+    description: Monitor market conditions and opportunities
+    config:
+      indicators:
+        - price_targets
+        - volume_spikes
+        - volatility_changes
+      notifications:
+        enabled: true
+        types:
+          - price_target
+          - corporate_event
+
+  - name: token_validator
+    schedule: "0 */1 * * *"  # Каждый час
+    handler: src/agent/tasks/token_validator.py:run
+    description: Validate stored broker tokens
+    config:
+      retry_attempts: 3
+      retry_delay: 300  # 5 минут
+      notifications:
+        enabled: true
+        types:
+          - token_invalid
+
+# Настройки уведомлений
+notifications:
+  handlers:
+    - name: supabase_realtime
+      type: realtime
+      config:
+        channel: portfolio_alerts
+        tables:
+          - notifications
+        triggers:
+          - on: insert
+            action: notify
+          - on: update
+            action: notify
+            fields: [is_read, is_dismissed]
+    
+    - name: web_push
+      type: web_push
+      config:
+        topic: portfolio_updates
+        vapid_public_key: ${VAPID_PUBLIC_KEY}
+        vapid_private_key: ${VAPID_PRIVATE_KEY}
+        
+  templates:
+    - name: portfolio_change
+      title: "Portfolio Change Alert"
+      message: "Your portfolio value has changed by {change_percent}% in the last {time_period}"
+      
+    - name: price_target
+      title: "Price Target Alert"
+      message: "{symbol} has reached your {direction} price target of {price}"
+      
+    - name: risk_alert
+      title: "Risk Management Alert"
+      message: "Position in {symbol} exceeds {threshold}% of portfolio value"
+      
+    - name: token_invalid
+      title: "Broker Token Invalid"
+      message: "Your {broker} token is no longer valid. Please update it to continue receiving portfolio updates."
+      priority: high
+
+    - name: corporate_event
+      title: "Corporate Event Alert"
+      message: "{symbol}: {event_type} scheduled for {date}. {details}"
+
+    - name: rebalance_suggestion
+      title: "Portfolio Rebalance Suggestion"
+      message: "Your portfolio may need rebalancing. {details}"
+
+# Настройки безопасности
+security:
+  encryption:
+    provider: supabase_pgcrypto
+    key_rotation:
+      enabled: true
+      interval: 30  # дней
+  
+  token_storage:
+    type: supabase
+    table: user_tokens
+    encryption: true
+    validation:
+      enabled: true
+      interval: 3600  # 1 час
+
+# Настройки API
+api:
+  base_path: /api/v1
+  endpoints:
+    - path: /chat
+      method: POST
+      description: Process chat messages and portfolio queries
+    - path: /portfolio
+      method: GET
+      description: Get portfolio information
+    - path: /token/validate
+      method: POST
+      description: Validate broker token
+    - path: /notifications/settings
+      method: PUT
+      description: Update notification settings 

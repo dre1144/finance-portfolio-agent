@@ -1,0 +1,31 @@
+# Основные настройки агента
+agent:
+  name: "tinkoff_trader"
+  description: "Trading agent for Tinkoff Investments"
+  version: "0.1.0"
+
+# Настройки API
+api:
+  host: "0.0.0.0"  # Слушаем все интерфейсы
+  port: 8000       # Порт для API
+
+# Настройки логирования
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Настройки Tinkoff API
+tinkoff:
+  sandbox_mode: false  # Используем боевой режим
+  account_id: "2008777423"  # ID вашего основного брокерского счета
+
+# Настройки стратегии
+strategy:
+  max_position_size: 100000  # Максимальный размер позиции в рублях
+  risk_percentage: 2         # Максимальный риск на сделку в процентах
+  allowed_instruments:       # Разрешенные инструменты для торговли
+    - "BBG0013HGFT4"  # Пример FIGI
+    - "BBG00RPRPX12"
+  trading_schedule:         # Расписание торговли
+    start_time: "10:00"    # Московское время
+    end_time: "18:45"      # Московское время 

@@ -1,0 +1,80 @@
+version: 1
+name: finance-portfolio-agent
+description: MCP agent for portfolio analysis and management with Supabase integration
+
+# Конфигурация агента
+agent:
+  name: finance-portfolio-agent
+  version: 1.0.0
+  description: MCP agent for portfolio analysis and management with Supabase integration
+  entrypoint: src/agent/base.py:MCPAgent
+  tools:
+    - name: portfolio_info
+      description: Get portfolio information
+      handler: src/agent/tools/portfolio.py:PortfolioInfoTool
+    - name: portfolio_performance
+      description: Get portfolio performance metrics
+      handler: src/agent/tools/portfolio.py:PortfolioPerformanceTool
+    - name: portfolio_pnl
+      description: Get portfolio P&L analysis
+      handler: src/agent/tools/portfolio.py:PortfolioPnLTool
+    - name: market_data
+      description: Get market data and analysis
+      handler: src/agent/tools/market.py:MarketDataTool
+
+# Конфигурация среды
+environment:
+  required:
+    - SUPABASE_URL
+    - SUPABASE_SERVICE_KEY
+    - ENCRYPTION_KEY
+    - MCP_API_KEY
+    - MCP_API_URL
+
+# Конфигурация сервисов
+services:
+  - name: supabase
+    type: database
+    config:
+      url: ${SUPABASE_URL}
+      key: ${SUPABASE_SERVICE_KEY}
+      realtime:
+        enabled: true
+        channels:
+          - notifications
+          - portfolio_updates
+
+# Конфигурация задач
+tasks:
+  - name: portfolio_monitor
+    schedule: "*/5 * * * *"
+    handler: src/agent/tasks/portfolio_monitor.py:run
+  - name: market_monitor
+    schedule: "*/15 * * * *"
+    handler: src/agent/tasks/market_monitor.py:run
+  - name: token_validator
+    schedule: "0 */1 * * *"
+    handler: src/agent/tasks/token_validator.py:run
+
+# Конфигурация API
+api:
+  base_path: /api/v1
+  endpoints:
+    - path: /chat
+      method: POST
+    - path: /portfolio
+      method: GET
+    - path: /token/validate
+      method: POST
+    - path: /notifications/settings
+      method: PUT
+
+# Конфигурация логирования
+logging:
+  level: INFO
+  format: json
+
+# Конфигурация метрик
+metrics:
+  enabled: true
+  path: /metrics 

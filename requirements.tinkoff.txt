@@ -1,0 +1,6 @@
+numpy>=1.21.0
+pandas>=2.0.3
+python-dotenv==1.0.0
+tinkoff-investments==0.2.0b110
+pydantic>=1.9.2,<2.0.0
+cryptography==41.0.1 
